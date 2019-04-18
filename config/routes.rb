@@ -1,3 +1,9 @@
 Rails.application.routes.draw do
-  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+  resources :thermostats, only: [] do
+    member do
+      get :stats
+    end
+    resources :readings, only: [:create]
+  end
+  resources :readings, only: [:show]
 end
