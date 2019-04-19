@@ -3,7 +3,8 @@ class ReadingsController < BaseController
   before_action :authenticate_thermostat
 
   def create
-    @reading = @thermostat.readings.create! readings_params
+    @reading = Reading.create_later! readings_params.merge(thermostat_id: @thermostat.id)
+
     render_serialized(201) do
       @reading
     end

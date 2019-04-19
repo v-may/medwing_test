@@ -42,11 +42,11 @@ RSpec.describe 'Readings API', type: :request do
 
   describe 'POST /:thermostat_id/readings' do
     let(:thermostat) { create :thermostat }
-    let(:reading) { Reading.last }
     let(:request_path) { thermostat_readings_path thermostat }
     let(:params) { { humidity: 41.6, temperature: 22.7, battery_charge: 78.9 } }
 
     before do
+      Reading.reset_redis
       post request_path,
         params: params.to_json,
         headers: { 'CONTENT_TYPE' => 'application/json', 'ACCEPT' => 'application/json' }
@@ -57,9 +57,16 @@ RSpec.describe 'Readings API', type: :request do
     context 'with a token parameter' do
       let(:request_path) { thermostat_readings_path thermostat, token: thermostat.household_token }
 
-      it 'returns the reading data' do
+      it 'returns the reading data and schedules its creation' do
+        reading_attrs = { id: 1, thermostat_id: thermostat.id }.merge(params)
+
         expect(response).to have_http_status :created
-        check_reading reading.attributes.symbolize_keys
+        check_reading reading_attrs
+        expect(Reading.method :create!).to be_delayed(reading_attrs)
+
+        Sidekiq::Worker.drain_all
+
+        check_reading Reading.last.attributes.symbolize_keys
       end
 
       context 'given a wrong thermostat id' do

@@ -33,3 +33,5 @@ module MedwingTest
     config.api_only = true
   end
 end
+
+Sidekiq::Extensions.enable_delay!
