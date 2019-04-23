@@ -15,6 +15,14 @@ RSpec.describe Reading, type: :model do
         to eq cached_reading.attributes.symbolize_keys.to_json
       expect { Sidekiq::Worker.drain_all }.to change { Reading.count }.by 1
     end
+
+    context 'after create' do
+      before { Sidekiq::Worker.drain_all }
+
+      it 'removes the cached data from Redis' do
+        expect(REDIS.get "#{Rails.env}_reading_#{cached_reading.id}").not_to be
+      end
+    end
   end
 
   describe '::find' do

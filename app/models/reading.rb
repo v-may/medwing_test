@@ -2,6 +2,7 @@ class Reading < ApplicationRecord
   belongs_to :thermostat
 
   before_create :ensure_id
+  after_create :remove_from_redis
 
   CACHE_KEY_LAST_ID = "#{Rails.env}_reading_id"
   CACHE_KEY_ID = "#{Rails.env}_reading_"
@@ -48,5 +49,11 @@ class Reading < ApplicationRecord
 
   def ensure_id
     self.id ||= self.class.next_id!
+  end
+
+  private
+
+  def remove_from_redis
+    REDIS.del CACHE_KEY_ID + id.to_s
   end
 end
