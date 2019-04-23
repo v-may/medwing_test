@@ -9,16 +9,19 @@ RSpec.describe 'Thermostats API', type: :request do
         thermostat.readings.create!(temperature: -20.5, humidity: 0, battery_charge: 100)
       end
     end
-    let(:request_path) { stats_thermostat_path thermostat }
 
-    before { get request_path }
+    it 'requires authorisation' do
+      get stats_thermostat_path(thermostat)
 
-    specify { expect(response).to have_http_status :unauthorized }
+      expect(response).to have_http_status :unauthorized
+    end
 
     context 'with a token parameter' do
-      let(:request_path) { stats_thermostat_path thermostat, token: thermostat.household_token }
+      it 'returns the reading stats' do
+        expect(ThermostatStats).to receive(:call).with(thermostat).and_return(ThermostatStats.call thermostat)
 
-      it 'returns the reading data' do
+        get stats_thermostat_path(thermostat, token: thermostat.household_token)
+
         expect(response).to have_http_status :ok
 
         json = JSON.parse(response.body)
@@ -36,23 +39,48 @@ RSpec.describe 'Thermostats API', type: :request do
       end
 
       context 'given wrong id' do
-        let(:request_path) { "/thermostats/999999/stats?token=#{thermostat.household_token}" }
+        specify do
+          get "/thermostats/-1/stats?token=#{thermostat.household_token}"
 
-        specify { expect(response).to have_http_status :not_found }
+          expect(response).to have_http_status :not_found
+        end
+      end
+
+      context 'with errors' do
+        before do
+          allow(ThermostatStats).
+            to receive(:call).with(thermostat).
+            and_return(double 'thermostat stats', success?: false, errors: [Exception.new('Something went wrong')])
+        end
+
+        it 'returns errors data' do
+          get stats_thermostat_path(thermostat, token: thermostat.household_token)
+
+          expect(response).to have_http_status :unprocessable_entity
+
+          json = JSON.parse(response.body)
+
+          expect(json['error']).to eq 'Something went wrong'
+        end
       end
     end
 
     context 'given a token in the request header' do
-      before { get request_path, headers: { 'X-Token' => thermostat.household_token } }
+      specify do
+        get stats_thermostat_path(thermostat), headers: { 'X-Token' => thermostat.household_token }
 
-      specify { expect(response).to have_http_status :ok }
+        expect(response).to have_http_status :ok
+      end
     end
 
     context 'with wrong token' do
       let(:another_household_s_thermostat) { create :thermostat, household_token: 'other-token'}
-      let(:request_path) { stats_thermostat_path thermostat, token: another_household_s_thermostat.household_token }
 
-      specify { expect(response).to have_http_status :unauthorized }
+      specify do
+        get stats_thermostat_path(thermostat, token: another_household_s_thermostat.household_token)
+
+        expect(response).to have_http_status :unauthorized
+      end
     end
   end
 end
