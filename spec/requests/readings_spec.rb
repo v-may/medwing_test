@@ -58,7 +58,7 @@ RSpec.describe 'Readings API', type: :request do
       let(:request_path) { thermostat_readings_path thermostat, token: thermostat.household_token }
 
       it 'returns the reading data and schedules its creation' do
-        reading_attrs = { id: 1, thermostat_id: thermostat.id }.merge(params)
+        reading_attrs = { id: 1, thermostat_id: thermostat.id, number: 1 }.merge(params)
 
         expect(response).to have_http_status :created
         check_reading reading_attrs
